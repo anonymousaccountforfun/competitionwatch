@@ -11,6 +11,8 @@ import {
   Zap,
   Layers,
   BarChart3,
+  TrendingUp,
+  Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
@@ -21,6 +23,8 @@ const navigation = [
   { name: "Competitors", href: "/competitors", icon: Building2 },
   { name: "Competitive Sets", href: "/competitive-sets", icon: Layers },
   { name: "Compare", href: "/compare", icon: BarChart3 },
+  { name: "Analytics", href: "/analytics", icon: TrendingUp },
+  { name: "AI Insights", href: "/insights", icon: Sparkles },
   { name: "Timeline", href: "/timeline", icon: Clock },
   { name: "Settings", href: "/settings", icon: Settings },
 ]
