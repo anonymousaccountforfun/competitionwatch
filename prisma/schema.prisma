@@ -1,0 +1,214 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Workspaces (Organizations)
+model Workspace {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  settings  Json     @default("{}")
+
+  members         WorkspaceMember[]
+  competitors     Competitor[]
+  competitiveSets CompetitiveSet[]
+  alertPreferences AlertPreference[]
+
+  @@map("workspaces")
+}
+
+// Workspace membership
+model WorkspaceMember {
+  workspaceId String    @map("workspace_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  role        String    @default("member")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, userId])
+  @@map("workspace_members")
+}
+
+// Competitors
+model Competitor {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @map("workspace_id") @db.Uuid
+  name        String
+  primaryUrl  String   @map("primary_url")
+  logoUrl     String?  @map("logo_url")
+  description String?
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+  isActive    Boolean  @default(true) @map("is_active")
+
+  workspace            Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  monitoredUrls        MonitoredUrl[]
+  changes              Change[]
+  announcements        Announcement[]
+  competitiveSetMembers CompetitiveSetMember[]
+
+  @@index([workspaceId])
+  @@map("competitors")
+}
+
+// Competitive Sets (groupings)
+model CompetitiveSet {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @map("workspace_id") @db.Uuid
+  name        String
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  workspace Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  members   CompetitiveSetMember[]
+
+  @@map("competitive_sets")
+}
+
+model CompetitiveSetMember {
+  setId        String @map("set_id") @db.Uuid
+  competitorId String @map("competitor_id") @db.Uuid
+
+  set        CompetitiveSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  competitor Competitor     @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+
+  @@id([setId, competitorId])
+  @@map("competitive_set_members")
+}
+
+// Monitored URLs
+model MonitoredUrl {
+  id             String    @id @default(uuid()) @db.Uuid
+  competitorId   String    @map("competitor_id") @db.Uuid
+  url            String
+  urlType        String    @map("url_type") // 'landing_page', 'pricing', 'blog', 'careers', 'app_store', 'rss_feed'
+  checkFrequency String    @default("daily") @map("check_frequency") // 'hourly', 'daily', 'weekly'
+  isActive       Boolean   @default(true) @map("is_active")
+  lastCheckedAt  DateTime? @map("last_checked_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  competitor Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  snapshots  Snapshot[]
+  changes    Change[]
+
+  @@index([competitorId])
+  @@map("monitored_urls")
+}
+
+// Snapshots
+model Snapshot {
+  id             String   @id @default(uuid()) @db.Uuid
+  monitoredUrlId String   @map("monitored_url_id") @db.Uuid
+  capturedAt     DateTime @default(now()) @map("captured_at")
+  screenshotPath String?  @map("screenshot_path")
+  htmlContent    String?  @map("html_content")
+  textContent    String?  @map("text_content")
+  metaTags       Json?    @map("meta_tags")
+  contentHash    String?  @map("content_hash") // For quick diff detection
+  status         String   @default("success") // 'success', 'failed', 'blocked'
+
+  monitoredUrl   MonitoredUrl @relation(fields: [monitoredUrlId], references: [id], onDelete: Cascade)
+  beforeChanges  Change[]     @relation("BeforeSnapshot")
+  afterChanges   Change[]     @relation("AfterSnapshot")
+
+  @@index([monitoredUrlId])
+  @@index([capturedAt(sort: Desc)])
+  @@map("snapshots")
+}
+
+// Detected Changes
+model Change {
+  id               String   @id @default(uuid()) @db.Uuid
+  competitorId     String   @map("competitor_id") @db.Uuid
+  monitoredUrlId   String   @map("monitored_url_id") @db.Uuid
+  beforeSnapshotId String   @map("before_snapshot_id") @db.Uuid
+  afterSnapshotId  String   @map("after_snapshot_id") @db.Uuid
+  detectedAt       DateTime @default(now()) @map("detected_at")
+  changeType       String?  @map("change_type") // AI classified
+  summary          String?  // AI generated
+  analysis         String?  // AI generated
+  confidence       Float?
+  affectedAreas    String[] @map("affected_areas")
+  rawDiff          String?  @map("raw_diff")
+  isMaterial       Boolean  @default(true) @map("is_material") // Filter out minor changes
+  isRead           Boolean  @default(false) @map("is_read")
+  metadata         Json     @default("{}")
+
+  competitor     Competitor   @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  monitoredUrl   MonitoredUrl @relation(fields: [monitoredUrlId], references: [id], onDelete: Cascade)
+  beforeSnapshot Snapshot     @relation("BeforeSnapshot", fields: [beforeSnapshotId], references: [id], onDelete: Cascade)
+  afterSnapshot  Snapshot     @relation("AfterSnapshot", fields: [afterSnapshotId], references: [id], onDelete: Cascade)
+
+  @@index([competitorId])
+  @@index([detectedAt(sort: Desc)])
+  @@map("changes")
+}
+
+// Announcements (from RSS, app stores, etc.)
+model Announcement {
+  id           String    @id @default(uuid()) @db.Uuid
+  competitorId String    @map("competitor_id") @db.Uuid
+  sourceType   String    @map("source_type") // 'rss', 'app_store_ios', 'app_store_android', 'twitter', 'product_hunt'
+  sourceUrl    String?   @map("source_url")
+  title        String?
+  content      String?
+  publishedAt  DateTime? @map("published_at")
+  capturedAt   DateTime  @default(now()) @map("captured_at")
+  aiSummary    String?   @map("ai_summary")
+  aiAnalysis   String?   @map("ai_analysis")
+  changeType   String?   @map("change_type")
+  isRead       Boolean   @default(false) @map("is_read")
+  metadata     Json      @default("{}")
+
+  competitor Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+
+  @@index([competitorId])
+  @@index([publishedAt(sort: Desc)])
+  @@map("announcements")
+}
+
+// Alert Preferences
+model AlertPreference {
+  id              String   @id @default(uuid()) @db.Uuid
+  workspaceId     String   @map("workspace_id") @db.Uuid
+  userId          String?  @map("user_id") @db.Uuid
+  channel         String   // 'email', 'slack'
+  frequency       String   @default("daily") // 'realtime', 'daily', 'weekly'
+  minConfidence   Float    @default(0.7) @map("min_confidence")
+  changeTypes     String[] @map("change_types") // Filter by type, empty = all
+  slackWebhookUrl String?  @map("slack_webhook_url")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("alert_preferences")
+}
+
+// Job tracking for background processing
+model Job {
+  id          String    @id @default(uuid()) @db.Uuid
+  type        String    // 'snapshot', 'rss_fetch', 'app_store_check', 'digest', 'analyze_change'
+  status      String    @default("pending") // 'pending', 'running', 'completed', 'failed'
+  payload     Json      @default("{}")
+  result      Json?
+  error       String?
+  scheduledAt DateTime  @map("scheduled_at") @default(now())
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([status])
+  @@index([type])
+  @@index([scheduledAt])
+  @@map("jobs")
+}
