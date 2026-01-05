@@ -7,9 +7,10 @@ import {
   Building2,
   Clock,
   Settings,
-  Bell,
   LogOut,
   Zap,
+  Layers,
+  BarChart3,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
@@ -18,6 +19,8 @@ import { useRouter } from "next/navigation"
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Competitors", href: "/competitors", icon: Building2 },
+  { name: "Competitive Sets", href: "/competitive-sets", icon: Layers },
+  { name: "Compare", href: "/compare", icon: BarChart3 },
   { name: "Timeline", href: "/timeline", icon: Clock },
   { name: "Settings", href: "/settings", icon: Settings },
 ]

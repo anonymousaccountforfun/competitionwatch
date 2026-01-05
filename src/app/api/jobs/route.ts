@@ -3,6 +3,8 @@ import prisma from "@/lib/prisma"
 import { captureSnapshot, hasSignificantChange, computeDiff } from "@/lib/scraping/puppeteer"
 import { analyzeChange, analyzeAnnouncement } from "@/lib/ai/claude"
 import { fetchRSSFeed, fetchiOSAppInfo, extractAppStoreId } from "@/lib/scraping/rss"
+import { sendSlackNotification } from "@/lib/email/resend"
+import { changeTypeLabel } from "@/lib/types"
 
 // This endpoint is meant to be called by a cron job or job scheduler
 // In production, you would use Inngest, Trigger.dev, or similar
@@ -153,7 +155,7 @@ async function runSnapshotJobs() {
           afterDate: snapshot.capturedAt.toISOString(),
         })
 
-        await prisma.change.create({
+        const change = await prisma.change.create({
           data: {
             competitorId: url.competitor.id,
             monitoredUrlId: url.id,
@@ -168,6 +170,15 @@ async function runSnapshotJobs() {
             isMaterial: analysis.is_material,
           },
         })
+
+        // Trigger real-time Slack alerts if change is material
+        if (analysis.is_material) {
+          try {
+            await triggerRealtimeAlerts(change.id)
+          } catch (alertError) {
+            console.error("Error sending real-time alerts:", alertError)
+          }
+        }
       }
 
       results.push({ urlId: url.id, status: "success" })
@@ -341,4 +352,65 @@ async function runAppStoreJobs() {
     processed: results.length,
     results,
   })
+}
+
+async function triggerRealtimeAlerts(changeId: string) {
+  const change = await prisma.change.findUnique({
+    where: { id: changeId },
+    include: {
+      competitor: {
+        select: { id: true, name: true, workspaceId: true },
+      },
+      monitoredUrl: {
+        select: { url: true, urlType: true },
+      },
+    },
+  })
+
+  if (!change) return
+
+  // Find all alert preferences for this workspace with realtime Slack alerts enabled
+  const alertPrefs = await prisma.alertPreference.findMany({
+    where: {
+      workspaceId: change.competitor.workspaceId,
+      slackWebhookUrl: { not: null },
+      channels: { has: "slack" },
+      frequency: "realtime",
+    },
+  })
+
+  for (const pref of alertPrefs) {
+    if (!pref.slackWebhookUrl) continue
+
+    const typeLabel = changeTypeLabel[change.changeType as keyof typeof changeTypeLabel] || change.changeType
+
+    await sendSlackNotification(pref.slackWebhookUrl, {
+      text: `Material Change Detected: ${change.competitor.name}`,
+      blocks: [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: `${change.competitor.name}: ${typeLabel}`,
+          },
+        },
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: change.summary || "A significant change was detected.",
+          },
+        },
+        {
+          type: "context",
+          elements: [
+            {
+              type: "mrkdwn",
+              text: `*URL:* ${change.monitoredUrl?.url || "N/A"} | *Confidence:* ${Math.round((change.confidence || 0) * 100)}%`,
+            },
+          ],
+        },
+      ],
+    })
+  }
 }
