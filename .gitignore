@@ -50,3 +50,21 @@ prisma/*.db-journal
 # IDE
 .idea/
 .vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Vision Agent
+vision_agent/output/
+vision_agent/.env
+vision_agent/screenshots/
