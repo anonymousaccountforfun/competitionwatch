@@ -1,0 +1,34 @@
+# Vision-Driven Web Agent Dependencies
+# Python 3.11+ required
+
+# Browser automation
+playwright==1.49.1
+
+# LLM clients
+anthropic==0.40.0
+openai==1.57.0
+langchain==0.3.13
+langchain-anthropic==0.3.1
+langchain-openai==0.2.14
+
+# Image processing
+Pillow==11.0.0
+
+# Environment and configuration
+python-dotenv==1.0.1
+
+# Stealth and anti-detection
+fake-useragent==2.0.3
+
+# CLI utilities
+rich==13.9.4
+click==8.1.7
+
+# Async support
+asyncio-throttle==1.0.2
+
+# HTTP utilities (for health checks)
+httpx==0.28.1
+
+# Pydantic for data validation
+pydantic==2.10.3
