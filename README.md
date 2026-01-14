@@ -260,25 +260,37 @@ This project includes an adapted version of [Ralph](https://github.com/snarktank
 
 ### How Ralph Works
 
-1. You define user stories in `scripts/ralph/prd.json`
+1. You describe a feature, Ralph generates a structured PRD
 2. Ralph runs Claude Code in a loop, one iteration per story
 3. Each iteration: picks the highest-priority incomplete story, implements it, runs tests, commits, and marks it done
-4. Memory persists between iterations via git history, `progress.txt`, and the PRD status
+4. Self-correction: if something fails, Ralph retries with fresh context
+5. Memory persists between iterations via git history, `progress.txt`, and `AGENTS.md`
 
 ### Quick Start
 
 ```bash
-# 1. Copy the example PRD and customize it
+# Option 1: Generate PRD from a feature description
+./scripts/ralph/generate-prd.sh "Add user authentication with OAuth"
+
+# Option 2: Create PRD manually
 cp scripts/ralph/prd.json.example scripts/ralph/prd.json
+# Edit prd.json with your user stories
 
-# 2. Edit prd.json with your user stories
-# Make sure branchName, project, and userStories are filled in
-
-# 3. Run Ralph (defaults to 10 iterations max)
+# Run Ralph
 ./scripts/ralph/ralph.sh
+```
 
-# Or specify max iterations
-./scripts/ralph/ralph.sh 20
+### Command Line Options
+
+```bash
+./scripts/ralph/ralph.sh [options]
+
+Options:
+  -n, --max-iterations N   Maximum iterations (default: 10)
+  -r, --retry N            Retries per story on failure (default: 2)
+  -v, --verbose            Show full Claude output
+  -c, --continue           Continue from last run
+  -h, --help               Show help
 ```
 
 ### Requirements
@@ -290,18 +302,38 @@ cp scripts/ralph/prd.json.example scripts/ralph/prd.json
 
 | File | Purpose |
 |------|---------|
-| `scripts/ralph/ralph.sh` | Main loop script |
-| `scripts/ralph/prompt.md` | Instructions for each iteration |
-| `scripts/ralph/prd.json` | Your user stories (create from .example) |
+| `scripts/ralph/ralph.sh` | Main loop script with retry logic |
+| `scripts/ralph/generate-prd.sh` | Generate PRD from feature description |
+| `scripts/ralph/prompt.md` | Self-correcting instructions for each iteration |
+| `scripts/ralph/prd.json.example` | Template for user stories |
 | `scripts/ralph/progress.txt` | Append-only learnings log |
-| `scripts/ralph/archive/` | Archived runs from previous branches |
+| `scripts/ralph/logs/` | Detailed logs per iteration |
+| `AGENTS.md` | Long-term architectural knowledge |
+| `CLAUDE.md` | Claude Code specific instructions |
 
 ### Tips for Good PRDs
 
-- **Right-size stories**: Each story should fit in a single Claude context window
+- **Right-size stories**: Each story should take 10-30 minutes for an AI to implement
 - **Be specific**: Include concrete acceptance criteria
 - **Order by priority**: Lower priority number = implemented first
-- **Include quality gates**: Add "typecheck passes" or "tests pass" to criteria
+- **Include quality gates**: Add "typecheck passes" to acceptance criteria
+- **4-8 stories is ideal**: Break down larger features, combine trivial ones
+
+### Example Workflow
+
+```bash
+# 1. Generate a PRD for your feature
+./scripts/ralph/generate-prd.sh "Add dark mode toggle to settings"
+
+# 2. Review the generated prd.json
+cat scripts/ralph/prd.json
+
+# 3. Run Ralph to implement it
+./scripts/ralph/ralph.sh -v
+
+# 4. Check progress
+cat scripts/ralph/progress.txt
+```
 
 ## Support
 

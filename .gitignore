@@ -68,3 +68,10 @@ build/
 vision_agent/output/
 vision_agent/.env
 vision_agent/screenshots/
+
+# Ralph (autonomous agent loop)
+scripts/ralph/prd.json
+scripts/ralph/logs/
+scripts/ralph/.last-branch
+scripts/ralph/.ralph-state
+scripts/ralph/archive/
