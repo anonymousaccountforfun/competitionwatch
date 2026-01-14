@@ -1,0 +1,16 @@
+{
+  "name": "hims-blog-scraper",
+  "version": "1.0.0",
+  "description": "Scrapes all blog content from hims.com/blog",
+  "main": "scraper.js",
+  "scripts": {
+    "scrape": "node scraper.js",
+    "scrape:headed": "HEADLESS=false node scraper.js"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "puppeteer": "^23.0.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}
