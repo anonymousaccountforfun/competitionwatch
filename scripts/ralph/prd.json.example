@@ -1,0 +1,61 @@
+{
+  "project": "MyProject",
+  "branchName": "ralph/feature-name",
+  "description": "Brief description of the feature being implemented",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "First task - usually database/backend setup",
+      "description": "As a developer, I need to set up the foundation for this feature.",
+      "acceptanceCriteria": [
+        "Database schema updated if needed",
+        "Backend types/models created",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Second task - core implementation",
+      "description": "As a user, I want the main functionality to work.",
+      "acceptanceCriteria": [
+        "Core feature implemented",
+        "Unit tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Third task - UI implementation",
+      "description": "As a user, I want to interact with this feature in the UI.",
+      "acceptanceCriteria": [
+        "UI component created",
+        "Connected to backend",
+        "Typecheck passes",
+        "Verify in browser"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Fourth task - polish and edge cases",
+      "description": "As a user, I want the feature to handle edge cases gracefully.",
+      "acceptanceCriteria": [
+        "Error handling implemented",
+        "Loading states work correctly",
+        "Empty states display properly",
+        "All tests pass"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
