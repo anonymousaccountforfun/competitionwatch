@@ -254,6 +254,55 @@ The AI classifies changes into the following types:
 
 MIT License - see LICENSE file for details.
 
+## Ralph - Autonomous Agent Loop
+
+This project includes an adapted version of [Ralph](https://github.com/snarktank/ralph) for Claude Code. Ralph is an autonomous AI agent loop that implements features from a PRD (Product Requirements Document) one user story at a time.
+
+### How Ralph Works
+
+1. You define user stories in `scripts/ralph/prd.json`
+2. Ralph runs Claude Code in a loop, one iteration per story
+3. Each iteration: picks the highest-priority incomplete story, implements it, runs tests, commits, and marks it done
+4. Memory persists between iterations via git history, `progress.txt`, and the PRD status
+
+### Quick Start
+
+```bash
+# 1. Copy the example PRD and customize it
+cp scripts/ralph/prd.json.example scripts/ralph/prd.json
+
+# 2. Edit prd.json with your user stories
+# Make sure branchName, project, and userStories are filled in
+
+# 3. Run Ralph (defaults to 10 iterations max)
+./scripts/ralph/ralph.sh
+
+# Or specify max iterations
+./scripts/ralph/ralph.sh 20
+```
+
+### Requirements
+
+- Claude Code CLI installed and authenticated (`claude` command)
+- `jq` command-line JSON processor (`brew install jq` or `apt install jq`)
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `scripts/ralph/ralph.sh` | Main loop script |
+| `scripts/ralph/prompt.md` | Instructions for each iteration |
+| `scripts/ralph/prd.json` | Your user stories (create from .example) |
+| `scripts/ralph/progress.txt` | Append-only learnings log |
+| `scripts/ralph/archive/` | Archived runs from previous branches |
+
+### Tips for Good PRDs
+
+- **Right-size stories**: Each story should fit in a single Claude context window
+- **Be specific**: Include concrete acceptance criteria
+- **Order by priority**: Lower priority number = implemented first
+- **Include quality gates**: Add "typecheck passes" or "tests pass" to criteria
+
 ## Support
 
 For issues and feature requests, please open a GitHub issue.

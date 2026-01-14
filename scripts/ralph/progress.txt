@@ -1,0 +1,10 @@
+# Ralph Progress Log
+
+## Codebase Patterns
+<!-- Add reusable patterns discovered during iterations here -->
+
+---
+
+Started: (will be populated when ralph.sh runs)
+
+---
