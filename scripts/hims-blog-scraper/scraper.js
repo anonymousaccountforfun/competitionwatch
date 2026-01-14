@@ -93,8 +93,15 @@ class HimsBlogScraper {
           timeout: 30000,
         });
 
-        // Wait for content to load
-        await this.delay(1500);
+        // Wait longer for React/Next.js content to hydrate
+        await this.delay(3000);
+
+        // Try to wait for article content specifically
+        try {
+          await this.page.waitForSelector('article, [class*="article"], [class*="Article"], [class*="post"], [class*="Post"]', { timeout: 5000 });
+        } catch {
+          // Content selector not found, continue anyway
+        }
 
         const content = await this.page.content();
         return content;
@@ -108,6 +115,36 @@ class HimsBlogScraper {
       }
     }
     return null;
+  }
+
+  // Check if URL is an actual article (not a category page)
+  isArticleUrl(url) {
+    try {
+      const u = new URL(url);
+      const pathParts = u.pathname.split('/').filter(Boolean);
+
+      // Category pages have exactly 2 segments: /blog/category-name
+      // Article pages have 3+ segments: /blog/category/article-slug
+      // OR articles directly under /blog/ with descriptive slugs
+
+      if (pathParts.length < 2 || pathParts[0] !== 'blog') return false;
+      if (pathParts.length === 2) {
+        // Check if it's a known category (short single words)
+        const knownCategories = [
+          'hair', 'skin', 'sex', 'sexual-health', 'weight', 'mental-health',
+          'testosterone', 'labs', 'conditions', 'tag', 'all', 'category'
+        ];
+        const slug = pathParts[1].toLowerCase();
+        if (knownCategories.includes(slug) || slug.length < 5) {
+          return false; // Likely a category page
+        }
+        // Longer slugs with hyphens are likely articles
+        return slug.includes('-') && slug.length > 10;
+      }
+      return true; // 3+ segments = likely an article
+    } catch {
+      return false;
+    }
   }
 
   async scrollAndLoadMore(maxScrolls = 50) {
@@ -226,15 +263,8 @@ class HimsBlogScraper {
     // Try sitemap discovery
     await this.discoverFromSitemap(blogUrls);
 
-    // Deduplicate and clean
-    const uniqueUrls = [...new Set(blogUrls)].filter(url => {
-      try {
-        const u = new URL(url);
-        return u.pathname.startsWith('/blog/') && u.pathname !== '/blog/';
-      } catch {
-        return false;
-      }
-    });
+    // Deduplicate and filter to only actual articles (not category pages)
+    const uniqueUrls = [...new Set(blogUrls)].filter(url => this.isArticleUrl(url));
 
     console.log(`\nTotal unique blog URLs discovered: ${uniqueUrls.length}`);
 
@@ -318,26 +348,60 @@ class HimsBlogScraper {
       category = urlParts[1]; // Usually /blog/category/post-slug
     }
 
-    // Extract main content
-    let contentElement = $('article').first();
-    if (!contentElement.length) {
-      contentElement = $('[class*="article"]').first();
+    // Extract main content - try multiple selectors for Hims blog
+    let contentElement = null;
+    const contentSelectors = [
+      'article',
+      '[class*="ArticleContent"]',
+      '[class*="article-content"]',
+      '[class*="BlogPost"]',
+      '[class*="blog-post"]',
+      '[class*="PostContent"]',
+      '[class*="post-content"]',
+      '[class*="entry-content"]',
+      '[class*="article"]',
+      '[class*="content"]',
+      'main',
+      '#__next main',
+      '#main-content',
+    ];
+
+    for (const selector of contentSelectors) {
+      const el = $(selector).first();
+      if (el.length && el.text().trim().length > 200) {
+        contentElement = el;
+        break;
+      }
     }
-    if (!contentElement.length) {
-      contentElement = $('[class*="content"]').first();
-    }
-    if (!contentElement.length) {
-      contentElement = $('main').first();
-    }
-    if (!contentElement.length) {
+
+    if (!contentElement || !contentElement.length) {
       contentElement = $('body');
     }
 
     // Clone to avoid modifying original
     const cleanContent = contentElement.clone();
 
-    // Remove unwanted elements
-    cleanContent.find('script, style, nav, header, footer, [class*="nav"], [class*="header"], [class*="footer"], [class*="sidebar"], [class*="related"], [class*="comment"], [class*="share"], [class*="social"], [class*="newsletter"], [class*="cta"], [class*="promo"]').remove();
+    // Remove unwanted elements more aggressively
+    cleanContent.find([
+      'script', 'style', 'nav', 'header', 'footer', 'noscript', 'iframe',
+      '[class*="nav"]', '[class*="Nav"]',
+      '[class*="header"]', '[class*="Header"]',
+      '[class*="footer"]', '[class*="Footer"]',
+      '[class*="sidebar"]', '[class*="Sidebar"]',
+      '[class*="related"]', '[class*="Related"]',
+      '[class*="comment"]', '[class*="Comment"]',
+      '[class*="share"]', '[class*="Share"]',
+      '[class*="social"]', '[class*="Social"]',
+      '[class*="newsletter"]', '[class*="Newsletter"]',
+      '[class*="cta"]', '[class*="CTA"]',
+      '[class*="promo"]', '[class*="Promo"]',
+      '[class*="modal"]', '[class*="Modal"]',
+      '[class*="popup"]', '[class*="Popup"]',
+      '[class*="cookie"]', '[class*="Cookie"]',
+      '[class*="banner"]', '[class*="Banner"]',
+      '[role="navigation"]',
+      '[aria-hidden="true"]',
+    ].join(', ')).remove();
 
     const contentHtml = cleanContent.html() || '';
     const contentText = cleanContent.text().replace(/\s+/g, ' ').trim();
