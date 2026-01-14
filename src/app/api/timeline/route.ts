@@ -1,10 +1,37 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import prisma from "@/lib/prisma"
+import { isDemoMode } from "@/lib/demo-auth"
+import { getMockTimeline } from "@/lib/mock-data"
 
 // GET /api/timeline - Unified timeline of changes + announcements
 export async function GET(request: NextRequest) {
   try {
+    // Demo mode: return mock data
+    if (isDemoMode()) {
+      const searchParams = request.nextUrl.searchParams
+      const page = parseInt(searchParams.get("page") || "1")
+      const limit = parseInt(searchParams.get("limit") || "30")
+      const mockItems = getMockTimeline()
+      const start = (page - 1) * limit
+      const paginatedItems = mockItems.slice(start, start + limit)
+
+      return NextResponse.json({
+        items: paginatedItems.map(item => ({
+          type: item.type,
+          id: item.id,
+          date: item.type === "change" ? item.detectedAt : item.publishedAt,
+          data: item,
+        })),
+        pagination: {
+          page,
+          limit,
+          total: mockItems.length,
+          totalPages: Math.ceil(mockItems.length / limit),
+        },
+      })
+    }
+
     const supabase = await createClient()
     const {
       data: { user },

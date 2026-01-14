@@ -1,10 +1,32 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import prisma from "@/lib/prisma"
+import { isDemoMode } from "@/lib/demo-auth"
+import { getMockChanges } from "@/lib/mock-data"
 
 // GET /api/changes - List all changes (paginated, filterable)
 export async function GET(request: NextRequest) {
   try {
+    // Demo mode: return mock data
+    if (isDemoMode()) {
+      const searchParams = request.nextUrl.searchParams
+      const page = parseInt(searchParams.get("page") || "1")
+      const limit = parseInt(searchParams.get("limit") || "20")
+      const mockChanges = getMockChanges()
+      const start = (page - 1) * limit
+      const paginatedChanges = mockChanges.slice(start, start + limit)
+
+      return NextResponse.json({
+        changes: paginatedChanges,
+        pagination: {
+          page,
+          limit,
+          total: mockChanges.length,
+          totalPages: Math.ceil(mockChanges.length / limit),
+        },
+      })
+    }
+
     const supabase = await createClient()
     const {
       data: { user },

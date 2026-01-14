@@ -2,10 +2,17 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import prisma from "@/lib/prisma"
 import { createCompetitorSchema } from "@/lib/types"
+import { isDemoMode } from "@/lib/demo-auth"
+import { getMockCompetitors } from "@/lib/mock-data"
 
 // GET /api/competitors - List all competitors for the workspace
 export async function GET(request: NextRequest) {
   try {
+    // Demo mode: return mock data
+    if (isDemoMode()) {
+      return NextResponse.json(getMockCompetitors())
+    }
+
     const supabase = await createClient()
     const {
       data: { user },
